@@ -1,0 +1,5 @@
+.vscode
+.kilocode
+.venv
+__pycache__
+settings.yml
