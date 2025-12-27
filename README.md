@@ -176,23 +176,49 @@ Scrape content from multiple web pages with browser support and TOON encoding.
 **Input:**
 - `configs` (list[ScrapeConfig], required): List of scrape configurations
   - `url` (str, required): URL to scrape
-  - `method` (str, optional, default "requests"): "requests" or "browser"
-  - `wait_time` (int, optional, default 3): Seconds to wait for dynamic content (browser only, 0-30)
+  - `method` (str, optional, default "requests"): Scraping method
+    - `"requests"` - Fast static HTML scraping (for traditional server-rendered sites)
+    - `"browser"` - Full browser rendering with Playwright (for JavaScript apps like React, Next.js, Vue, Angular)
+  - `wait_time` (int, optional, default 3): Seconds to wait for JavaScript to load (only used with `"browser"` method, ignored for `"requests"`, range: 0-30)
+
+**When to use each method:**
+- **Use `"requests"`** for: Traditional websites, server-rendered content, static HTML pages, blogs, documentation sites
+- **Use `"browser"`** for: Single Page Applications (SPAs), Next.js/React apps, Vue/Angular apps, sites with dynamic JavaScript content, client-side rendered pages
+
+**Example:**
+```json
+[
+  {"url": "https://python.org", "method": "requests"},
+  {"url": "https://getrepeat.io", "method": "browser", "wait_time": 3}
+]
+```
 
 **Returns:**
-- TOON-encoded string containing scraped content for each URL with:
+- TOON-encoded string containing scraped content indexed by `{index}_{url}_{method}` format
+- Each result includes:
   - `status`: "success" or "error"
-  - `method`: The scraping method used
+  - `method`: The scraping method used ("requests" or "browser")
   - `title`: Page title
-  - `content`: Extracted text content (max 10,000 chars)
-  - `length`: Actual content length
+  - `content`: Extracted text content (max 10,000 chars by default)
+  - `length`: Actual content length after truncation
+  - `original_length`: Original content length before truncation
+  - `truncated`: Boolean indicating if content was truncated
   - `error`: Error message (only present if status is "error")
+
+**Note:** Results are keyed by index, URL, and method to support scraping the same URL with different methods.
 
 ## Features
 
 ### Dual Scraping Methods
 - **requests**: Fast static HTML scraping using requests + BeautifulSoup
-- **browser**: Full browser rendering using Playwright with Chromium for JavaScript-heavy sites
+  - Best for: Traditional server-rendered websites, static content
+  - Pros: Fast, lightweight, no browser overhead
+  - Cons: Cannot execute JavaScript, won't work with SPAs
+  
+- **browser**: Full browser rendering using Playwright with Chromium
+  - Best for: JavaScript-heavy sites (React, Next.js, Vue, Angular)
+  - Pros: Executes JavaScript, sees the fully rendered page
+  - Cons: Slower, requires browser installation and more resources
 
 ## Configuration
 

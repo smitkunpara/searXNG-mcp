@@ -20,7 +20,11 @@ from .config import (
 
 
 class ScrapeConfig(BaseModel):
-    """Configuration for scraping a web page."""
+    """Configuration for scraping a web page.
+    
+    Use 'requests' for static HTML sites (fast, but won't execute JavaScript).
+    Use 'browser' for JavaScript-heavy sites like React, Next.js, Vue, Angular apps.
+    """
     
     url: str
     method: Literal["requests", "browser"] = "requests"
@@ -30,7 +34,7 @@ class ScrapeConfig(BaseModel):
             default=3,
             ge=0,
             le=30,
-            description="Seconds to wait for dynamic content (ignored for requests method)"
+            description="Seconds to wait for JavaScript to load (only used with 'browser' method, ignored for 'requests')"
         )
     ] = 3
 
@@ -39,8 +43,10 @@ def clean_html(soup: BeautifulSoup) -> str:
     """
     Remove unwanted tags and extract clean text from HTML.
     
-    Removes scripts, styles, navigation, footers, and other non-content
-    elements to extract only the main text content.
+    Removes scripts, styles, and other non-content elements to extract
+    only the main text content. Uses careful filtering to avoid removing
+    content from modern frameworks like React/Next.js that may use
+    class names containing common words.
     
     Args:
         soup: BeautifulSoup parsed HTML document
@@ -50,26 +56,22 @@ def clean_html(soup: BeautifulSoup) -> str:
     """
     # Remove unwanted elements by tag name
     unwanted_tags = [
-        'script', 'style', 'nav', 'footer', 'header',
-        'aside', 'noscript', 'iframe', 'form', 'button',
-        'meta', 'link', 'svg', 'img', 'video', 'audio'
+        'script', 'style', 'nav', 'footer',
+        'aside', 'noscript', 'iframe', 'svg'
     ]
     for tag in soup.find_all(unwanted_tags):
         tag.decompose()
     
-    # Remove elements with common non-content class names
-    non_content_patterns = [
-        'nav', 'footer', 'header', 'sidebar', 'menu',
-        'ad', 'advertisement', 'cookie', 'popup', 'modal'
+    # Remove elements with very specific non-content patterns (exact matches only)
+    # Avoiding broad patterns like 'header', 'nav', 'menu' to prevent removing
+    # content from frameworks like Notion, Next.js, etc.
+    non_content_classes = [
+        'advertisement', 'cookie-banner', 'cookie-consent',
+        'popup-overlay', 'modal-overlay', 'ad-container'
     ]
     for element in soup.find_all(class_=lambda x: x and any(
-        pattern in str(x).lower() for pattern in non_content_patterns
-    )):
-        element.decompose()
-    
-    # Remove elements with common non-content IDs
-    for element in soup.find_all(id=lambda x: x and any(
-        pattern in str(x).lower() for pattern in non_content_patterns
+        pattern == str(c).lower() for c in (x if isinstance(x, list) else [x]) 
+        for pattern in non_content_classes
     )):
         element.decompose()
     
@@ -313,11 +315,11 @@ async def scrape_pages(configs: List[ScrapeConfig]) -> Dict:
         configs: List of ScrapeConfig objects
         
     Returns:
-        Dictionary mapping URLs to scrape results
+        Dictionary with results indexed by number (supports multiple requests for same URL)
     """
     results = {}
     
-    for config in configs:
+    for idx, config in enumerate(configs):
         url = config.url
         method = config.method
         wait_time = config.wait_time if method == "browser" else 0
@@ -327,6 +329,8 @@ async def scrape_pages(configs: List[ScrapeConfig]) -> Dict:
         else:
             result = await scrape_with_browser(url, wait_time)
         
-        results[url] = result
+        # Use unique key combining index, URL, and method to support multiple scrapes of same URL
+        key = f"{idx}_{url}_{method}"
+        results[key] = result
     
     return results

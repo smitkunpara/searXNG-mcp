@@ -74,14 +74,22 @@ async def scrape_pages(
 
     Supports two scraping methods per URL:
     - 'requests': Fast static HTML scraping using requests + BeautifulSoup.
-      Best for simple HTML pages that don't require JavaScript.
+      Best for traditional server-rendered HTML pages (blogs, docs, static sites).
+      Does NOT execute JavaScript - won't work with SPAs or client-side rendered content.
+      
     - 'browser': Full browser rendering using Playwright with Chromium.
-      Required for JavaScript-heavy sites (React, Vue, Angular, etc.).
+      Required for JavaScript-heavy sites (React, Next.js, Vue, Angular, SPAs).
+      Executes JavaScript and waits for dynamic content to load.
       The browser instance is reused across calls for better performance.
 
-    Content is automatically cleaned by removing scripts, styles, navigation,
-    footers, and other non-content elements. Output is limited to 10,000
-    characters per page to prevent context overflow.
+    The 'wait_time' parameter only applies to 'browser' method and specifies how many
+    seconds to wait for JavaScript to finish loading (default: 3, range: 0-30).
+    It is ignored for the 'requests' method which returns immediately.
+
+    Content is automatically cleaned by removing scripts, styles, and other non-content
+    elements. Output is limited to 10,000 characters per page by default to prevent
+    context overflow. Multiple scrapes of the same URL are supported by using unique
+    keys in the format: {index}_{url}_{method}.
     
     Includes retry logic with exponential backoff for robust operation.
 
@@ -89,7 +97,7 @@ async def scrape_pages(
         configs: List of ScrapeConfig objects, each with url, method, and wait_time
 
     Returns:
-        TOON-formatted string containing scraped content for each URL
+        TOON-formatted string containing scraped content indexed by {index}_{url}_{method}
     """
     
     try:
