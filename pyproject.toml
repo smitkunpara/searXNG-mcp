@@ -16,6 +16,7 @@ dependencies = [
     "lxml",
     "playwright",
     "python-toon",
+    "python-dotenv",
 ]
 
 [project.scripts]
@@ -26,4 +27,4 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["."]
+packages = ["searxng_mcp"]

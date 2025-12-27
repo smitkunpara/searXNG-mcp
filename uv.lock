@@ -1693,6 +1693,7 @@ dependencies = [
     { name = "fastmcp" },
     { name = "lxml" },
     { name = "playwright" },
+    { name = "python-dotenv" },
     { name = "python-toon" },
     { name = "requests" },
 ]
@@ -1703,6 +1704,7 @@ requires-dist = [
     { name = "fastmcp" },
     { name = "lxml" },
     { name = "playwright" },
+    { name = "python-dotenv" },
     { name = "python-toon" },
     { name = "requests" },
 ]

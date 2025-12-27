@@ -2,10 +2,41 @@
 
 A FastMCP-based MCP server for web search via SearXNG and page scraping with TOON encoding for LLM optimization.
 
+## Features
+
+- **Multi-query web search** via SearXNG with configurable result counts
+- **Dual scraping methods**: requests (fast) and browser (JavaScript support)
+- **TOON encoding** for token-efficient LLM communication
+- **Modular architecture** with separated concerns
+- **Retry logic** with exponential backoff for robust operation
+- **Comprehensive logging** for debugging and monitoring
+- **Environment variable configuration** for easy customization
+- **Persistent browser instance** reuse for better performance
+
+## Project Structure
+
+```
+searXNG mcp/
+├── server.py              # Main FastMCP server entry point
+├── searxng_mcp/           # Main package directory
+│   ├── __init__.py        # Package initialization and exports
+│   ├── config.py          # Configuration and constants
+│   ├── search.py          # SearXNG search functionality
+│   ├── scraper.py         # Web scraping with requests/browser
+│   ├── browser.py         # Playwright browser management
+│   └── utils.py           # Utility functions
+├── pyproject.toml         # Project metadata and dependencies
+├── .env.example           # Example environment variables
+├── settings.yml           # SearXNG configuration
+├── README.md              # This file
+└── server_backup.py       # Backup of original server.py
+```
+
 ## Prerequisites
 
 - Python 3.10+
 - A running SearXNG instance (for search functionality)
+- [uv](https://github.com/astral-sh/uv) for dependency management
 
 ### Starting SearXNG with Docker
 
@@ -31,14 +62,30 @@ Verify it's running: `curl "http://localhost:8080/search?q=test&format=json"`
 
 ## Quick Start
 
-1. Install dependencies:
+1. **Install dependencies:**
    ```bash
    uv sync
    ```
 
+2. **Configure environment (optional):**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your settings
+   ```
+
+3. **Install Playwright for browser scraping (optional):**
+   ```bash
+   uv run playwright install chromium
+   ```
+
+4. **Run the server:**
+   ```bash
+   uv run server.py
+   ```
+
 ## VS Code MCP Setup
 
-Create `.vscode/mcp.json` in your workspace:
+Create `.vscode/mcp.json` in your workspace with full configuration:
 
 ```json
 {
@@ -46,10 +93,59 @@ Create `.vscode/mcp.json` in your workspace:
     "searxng-mcp": {
       "command": "uv",
       "args": ["run", "server.py"],
+      "cwd": "c:/Users/smitk/Desktop/searXNG mcp",
+      "env": {
+        "SEARXNG_URL": "http://localhost:8080",
+        "REQUESTS_TIMEOUT": "10",
+        "BROWSER_TIMEOUT": "30000",
+        "MAX_CONTENT_LENGTH": "10000",
+        "MAX_NUM_RESULTS": "50",
+        "MAX_RETRIES": "3",
+        "RETRY_DELAY": "1.0"
+      }
     }
   }
 }
 ```
+
+### Kilo Code MCP Setup
+
+If using Kilo Code editor, create `.kilocode/mcp.json` in your workspace:
+
+```json
+{
+  "mcpServers": {
+    "searxng-mcp": {
+      "command": "uv",
+      "args": ["run", "server.py"],
+      "cwd": "c:/Users/smitk/Desktop/searXNG mcp",
+      "alwaysAllow": ["search_web", "scrape_pages"],
+      "disabled": false,
+      "env": {
+        "SEARXNG_URL": "http://localhost:8080",
+        "REQUESTS_TIMEOUT": "10",
+        "BROWSER_TIMEOUT": "30000",
+        "MAX_CONTENT_LENGTH": "10000",
+        "MAX_NUM_RESULTS": "50",
+        "MAX_RETRIES": "3",
+        "RETRY_DELAY": "1.0"
+      }
+    }
+  }
+}
+```
+
+### Environment Variables
+
+The MCP server supports the following environment variables (also available in `.env.example`):
+
+- `SEARXNG_URL`: SearXNG instance URL (default: `http://localhost:8080`)
+- `REQUESTS_TIMEOUT`: HTTP request timeout in seconds (default: `10`)
+- `BROWSER_TIMEOUT`: Browser operation timeout in milliseconds (default: `30000`)
+- `MAX_CONTENT_LENGTH`: Maximum scraped content length in characters (default: `10000`)
+- `MAX_NUM_RESULTS`: Maximum search results per query (default: `50`)
+- `MAX_RETRIES`: Maximum retry attempts for failed requests (default: `3`)
+- `RETRY_DELAY`: Delay between retries in seconds (default: `1.0`)
 
 ## Tools
 
@@ -98,56 +194,70 @@ Scrape content from multiple web pages with browser support and TOON encoding.
 - **requests**: Fast static HTML scraping using requests + BeautifulSoup
 - **browser**: Full browser rendering using Playwright with Chromium for JavaScript-heavy sites
 
+## Configuration
+
+All settings can be configured via environment variables. Copy [.env.example](.env.example) to `.env` and customize:
+
+```bash
+# SearXNG Configuration
+SEARXNG_URL=http://localhost:8080
+
+# Timeout Settings
+REQUESTS_TIMEOUT=10          # seconds
+BROWSER_TIMEOUT=30000        # milliseconds
+
+# Content Limits
+MAX_CONTENT_LENGTH=10000     # characters per page
+MAX_NUM_RESULTS=50           # maximum search results per query
+
+# Retry Configuration
+MAX_RETRIES=3                # retry attempts
+RETRY_DELAY=1.0              # seconds between retries
+
+## Dependencies
+
+Core dependencies (auto-installed with `uv sync`):
+- `fastmcp`: MCP server framework
+- `requests`: HTTP requests
+- `beautifulsoup4` & `lxml`: HTML parsing
+- `pydantic`: Data validation
+- `playwright`: Browser automation (optional for browser scraping)
+- `python-toon`: Token optimization
+- `python-dotenv`: Environment variable management
+
+## Improvements Made
+
+### Logic Fixes
+✅ **num_results validation**: Now properly validates and clamps to 1-50 range
+✅ **Retry logic**: Added exponential backoff for failed requests
+✅ **Browser cleanup**: Proper resource cleanup on shutdown
+✅ **Configurable SearXNG URL**: Via environment variables
+✅ **Error handling**: Comprehensive try-catch blocks with detailed error messages
+
+### Code Quality
+✅ **Modular architecture**: Separated into config, search, scraper, browser, utils modules
+✅ **Logging**: Comprehensive logging throughout
+✅ **Type hints**: Full type annotations
+✅ **Documentation**: Detailed docstrings for all functions
+
+### New Features
+✅ **Environment variables**: Configurable via .env file
+✅ **Retry logic**: Automatic retries with exponential backoff
+✅ **Better error messages**: Contextual error information
+✅ **Content metadata**: Tracks original length, truncation status
+✅ **Browser stability**: Better error handling and connection checks
+
 ### Content Cleaning
 Automatically removes unwanted elements:
 - Scripts, styles, navigation, footers
 - Elements with non-content class/ID patterns
 - Normalizes whitespace for clean output
 
-### Error Handling
-Comprehensive error handling with detailed error messages:
-- Connection timeouts
-- HTTP errors
-- Invalid JSON responses
-- Playwright installation errors
-
 ### Performance Optimizations
 - Persistent browser instance reuse across calls
 - TOON encoding for token-efficient LLM communication
-- Content length limiting (10,000 characters max per page)
-
-## Configuration
-
-### SearXNG Settings
-The server uses the following SearXNG configuration:
-- **Search formats**: html, json
-- **Server settings**:
-  - Secret key: my_secret_key_12345
-  - Limiter: disabled
-  - Image proxy: disabled
-  - API enabled: true
-- **General settings**:
-  - Debug: disabled
-  - Trusted proxies: 127.0.0.1
-- **Bot detection**: disabled
-
-### Server Configuration
-The server is configured to use SearXNG at `http://localhost:8080` by default. You can modify the `searxng_url` variable in [`server.py`](server.py:164) to use a different SearXNG instance.
-
-## Dependencies
-
-- `requests`: For HTTP requests
-- `beautifulsoup4`: For HTML parsing
-- `fastmcp`: For MCP server functionality
-- `pydantic`: For data validation
-- `playwright` (optional): For browser-based scraping
-- `toon`: For LLM token optimization
-
-Install optional dependencies:
-```bash
-uv add playwright
-uv run playwright install chromium
-```
+- Content length limiting (configurable per page)
+- Exponential backoff retry strategy
 
 ## Usage Examples
 
