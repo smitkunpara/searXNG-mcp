@@ -138,26 +138,10 @@ def clean_html(soup: BeautifulSoup) -> str:
 
 @mcp.tool()
 def search_web(
-    queries: Annotated[
-        list[str],
-        Field(description="List of search queries to execute simultaneously")
-    ],
-    num_results: Annotated[
-        int,
-        Field(
-            default=10,
-            ge=1,
-            le=50,
-            description="Number of results per query (1-50)"
-        )
-    ] = 10,
-    searxng_url: Annotated[
-        str,
-        Field(
-            default="http://localhost:8888",
-            description="SearXNG instance URL"
-        )
-    ] = "http://localhost:8888"
+    query_configs: Annotated[
+        List[dict],
+        Field(description="List of query configurations, each with 'query' and optional 'num_results' (default 5)")
+    ]
 ) -> dict:
     """
     Execute multiple web search queries via SearXNG.
@@ -168,9 +152,9 @@ def search_web(
     Errors in individual queries won't fail the entire batch.
     
     Args:
-        queries: List of search queries to execute
-        num_results: Number of results per query (1-50)
-        searxng_url: SearXNG instance URL
+        query_configs: List of dicts, each containing:
+            - query: The search query string
+            - num_results: Optional number of results (1-50, default 5)
         
     Returns:
         Dictionary mapping each query to its results containing:
@@ -179,10 +163,17 @@ def search_web(
         - results: List of result objects with title, url, content, engine
         - error: Error message (only present if status is "error")
     """
+    searxng_url = "http://localhost:8080"  # Use local SearXNG instance
     results = {}
-    headers = {"User-Agent": USER_AGENT}
+    headers = {
+        "User-Agent": USER_AGENT,
+        "X-Forwarded-For": "127.0.0.1",
+        "X-Real-IP": "127.0.0.1"
+    }
     
-    for i, query in enumerate(queries):
+    for i, config in enumerate(query_configs):
+        query = config["query"]
+        num_results = config.get("num_results", 5)
         try:
             # Build the search URL
             search_url = f"{searxng_url.rstrip('/')}/search"
