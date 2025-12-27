@@ -1,6 +1,6 @@
 # SearXNG MCP Server
 
-A FastMCP-based MCP server for web search via SearXNG and page scraping.
+A FastMCP-based MCP server for web search via SearXNG and page scraping with TOON encoding for LLM optimization.
 
 ## Prerequisites
 
@@ -9,7 +9,7 @@ A FastMCP-based MCP server for web search via SearXNG and page scraping.
 
 ### Starting SearXNG with Docker
 
-Copy the provided `settings.yml` and start SearXNG:
+Start SearXNG on localhost:8080:
 
 ```bash
 docker run -d \
@@ -36,11 +36,6 @@ Verify it's running: `curl "http://localhost:8080/search?q=test&format=json"`
    uv sync
    ```
 
-2. Start the MCP server:
-   ```bash
-   uv run server.py
-   ```
-
 ## VS Code MCP Setup
 
 Create `.vscode/mcp.json` in your workspace:
@@ -51,7 +46,6 @@ Create `.vscode/mcp.json` in your workspace:
     "searxng-mcp": {
       "command": "uv",
       "args": ["run", "server.py"],
-      "cwd": "c:/Users/smitk/Desktop/searXNG mcp"
     }
   }
 }
@@ -60,7 +54,7 @@ Create `.vscode/mcp.json` in your workspace:
 ## Tools
 
 ### search_web
-Execute multiple web search queries via SearXNG.
+Execute multiple web search queries via SearXNG with TOON encoding for token efficiency.
 
 **Input:**
 - `query_configs` (list[dict], required): List of query configurations, each containing:
@@ -68,10 +62,10 @@ Execute multiple web search queries via SearXNG.
   - `num_results` (int, optional, default 5): Number of results per query (1-50)
 
 **Returns:**
-- Dictionary mapping each query to its results containing:
+- TOON-encoded string containing search results with:
   - `status`: "success" or "error"
   - `count`: Number of results returned
-  - `results`: List of result objects with title, url, content, engine
+  - `results`: List of result objects with title, url, content
   - `error`: Error message (only present if status is "error")
 
 **Headers:**
@@ -81,7 +75,7 @@ The server automatically includes the following headers in requests:
 - `X-Real-IP`: 127.0.0.1
 
 ### scrape_pages
-Scrape content from multiple web pages.
+Scrape content from multiple web pages with browser support and TOON encoding.
 
 **Input:**
 - `configs` (list[ScrapeConfig], required): List of scrape configurations
@@ -90,7 +84,7 @@ Scrape content from multiple web pages.
   - `wait_time` (int, optional, default 3): Seconds to wait for dynamic content (browser only, 0-30)
 
 **Returns:**
-- Dictionary mapping each URL to its scraped content containing:
+- TOON-encoded string containing scraped content for each URL with:
   - `status`: "success" or "error"
   - `method`: The scraping method used
   - `title`: Page title
@@ -98,10 +92,34 @@ Scrape content from multiple web pages.
   - `length`: Actual content length
   - `error`: Error message (only present if status is "error")
 
+## Features
+
+### Dual Scraping Methods
+- **requests**: Fast static HTML scraping using requests + BeautifulSoup
+- **browser**: Full browser rendering using Playwright with Chromium for JavaScript-heavy sites
+
+### Content Cleaning
+Automatically removes unwanted elements:
+- Scripts, styles, navigation, footers
+- Elements with non-content class/ID patterns
+- Normalizes whitespace for clean output
+
+### Error Handling
+Comprehensive error handling with detailed error messages:
+- Connection timeouts
+- HTTP errors
+- Invalid JSON responses
+- Playwright installation errors
+
+### Performance Optimizations
+- Persistent browser instance reuse across calls
+- TOON encoding for token-efficient LLM communication
+- Content length limiting (10,000 characters max per page)
+
 ## Configuration
 
 ### SearXNG Settings
-The server uses the following SearXNG configuration (from `settings.yml`):
+The server uses the following SearXNG configuration:
 - **Search formats**: html, json
 - **Server settings**:
   - Secret key: my_secret_key_12345
@@ -114,7 +132,7 @@ The server uses the following SearXNG configuration (from `settings.yml`):
 - **Bot detection**: disabled
 
 ### Server Configuration
-The server is configured to use SearXNG at `http://localhost:8080` by default. You can modify the `searxng_url` variable in `server.py` to use a different SearXNG instance.
+The server is configured to use SearXNG at `http://localhost:8080` by default. You can modify the `searxng_url` variable in [`server.py`](server.py:164) to use a different SearXNG instance.
 
 ## Dependencies
 
@@ -123,6 +141,7 @@ The server is configured to use SearXNG at `http://localhost:8080` by default. Y
 - `fastmcp`: For MCP server functionality
 - `pydantic`: For data validation
 - `playwright` (optional): For browser-based scraping
+- `toon`: For LLM token optimization
 
 Install optional dependencies:
 ```bash

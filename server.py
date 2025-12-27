@@ -5,6 +5,7 @@ SearXNG Search & Scraper MCP Server
 A FastMCP-based MCP server that provides:
 - Multi-query web search via SearXNG
 - Dynamic page scraping with browser support
+- TOON encoding/decoding for LLM token optimization
 """
 
 import asyncio
@@ -14,11 +15,12 @@ import requests
 from bs4 import BeautifulSoup
 from fastmcp import FastMCP
 from pydantic import BaseModel, Field
+from toon import encode, decode
 
 # Initialize FastMCP server
 mcp = FastMCP(
     name="SearXNG MCP Server",
-    instructions="Multi-query web search via SearXNG + dynamic page scraping with browser support"
+    instructions="Multi-query web search via SearXNG + dynamic page scraping with browser support + TOON encoding/decoding for LLM optimization"
 )
 
 # Global browser instance for reuse across calls
@@ -142,12 +144,12 @@ def search_web(
         List[dict],
         Field(description="List of query configurations, each with 'query' and optional 'num_results' (default 5)")
     ]
-) -> dict:
+) -> str:
     """
     Execute multiple web search queries via SearXNG.
     
     Connects to a self-hosted SearXNG instance and executes all queries,
-    returning structured results with title, URL, content snippet, and engine name.
+    returning structured results in TOON format for token efficiency.
     Includes random delays between queries to be polite to the search server.
     Errors in individual queries won't fail the entire batch.
     
@@ -157,11 +159,7 @@ def search_web(
             - num_results: Optional number of results (1-50, default 5)
         
     Returns:
-        Dictionary mapping each query to its results containing:
-        - status: "success" or "error"
-        - count: Number of results returned
-        - results: List of result objects with title, url, content, engine
-        - error: Error message (only present if status is "error")
+        TOON-formatted string containing search results
     """
     searxng_url = "http://localhost:8080"  # Use local SearXNG instance
     results = {}
@@ -201,8 +199,7 @@ def search_web(
                 formatted_results.append({
                     "title": item.get("title", ""),
                     "url": item.get("url", ""),
-                    "content": item.get("content", ""),
-                    "engine": item.get("engine", "unknown")
+                    "content": item.get("content", "")
                 })
             
             results[query] = {
@@ -249,7 +246,7 @@ def search_web(
         
         # No delay needed for local SearXNG
         
-    return results
+    return encode(results)
 
 
 @mcp.tool()
@@ -258,7 +255,7 @@ async def scrape_pages(
         List[ScrapeConfig],
         Field(description="List of scrape configurations, each with URL, method, and wait_time")
     ]
-) -> dict:
+) -> str:
     """
     Scrape content from multiple web pages with individual configurations.
 
@@ -277,13 +274,7 @@ async def scrape_pages(
         configs: List of ScrapeConfig objects, each with url, method, and wait_time
 
     Returns:
-        Dictionary mapping each URL to its scraped content containing:
-        - status: "success" or "error"
-        - method: The scraping method used
-        - title: Page title
-        - content: Extracted text content (max 10,000 chars)
-        - length: Actual content length
-        - error: Error message (only present if status is "error")
+        TOON-formatted string containing scraped content for each URL
     """
     results = {}
     headers = {"User-Agent": USER_AGENT}
@@ -420,7 +411,7 @@ async def scrape_pages(
         
         # No delay needed for local scraping
         
-    return results
+    return encode(results)
 
 
 async def cleanup_browser():
