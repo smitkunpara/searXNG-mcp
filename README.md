@@ -70,7 +70,7 @@ Create `.vscode/mcp.json` in your workspace with full configuration:
     "searxng-mcp": {
       "command": "uv",
       "args": ["run", "server.py"],
-      "cwd": "c:/Users/smitk/Desktop/searXNG mcp",
+      "cwd": "<path-to-searxng-mcp-server>",
       "env": {
         "SEARXNG_URL": "http://localhost:8080",
         "REQUESTS_TIMEOUT": "10",
